@@ -1,0 +1,147 @@
+//07/12/22
+
+module elevator(CLK,Up, Down, PB1, PB2, PB3, S1, S2, S3, LED0, LED1, LED2, LED3, LED4, LED5, LED6, LED7,a,b,c,d,e,f,g);
+
+	//VARIABLES
+	input CLK; //CLOCK
+	input PB1, PB2, PB3; //PUSH BUTTONS
+	input S1, S2, S3; //REED SWITCH SENSOR
+	output Up, Down;//PIN 2 & 7 ON IC
+	output LED0, LED1, LED2, LED3, LED4, LED5, LED6, LED7;
+	
+	
+	//BCD
+	 reg  [6:0]floor_bcd_output=7'b0000000; 
+	 output  a,b,c,d,e,f,g;
+
+	integer set_floor;
+	integer cf;
+	
+
+	reg Up;
+	reg Down;
+
+	//ASSIGN INPUT/OUTPUS TO FPGA LEDS
+	assign LED0 = PB1;
+	assign LED1 = PB2;
+	assign LED2 = PB3;
+	assign LED3 = S1;
+	assign LED4 = S2;
+	assign LED5 = S3;
+	assign LED6 = Down;
+	assign LED7 = Up;
+
+
+	//REDUCE CLK FREQUENCY
+	reg [26:0] count = 0;
+	always @(posedge CLK)
+	begin
+		count <= count + 1'b1;
+
+		//PUSH BUTTONS
+		if(PB1==1)
+		begin
+			set_floor= 1;
+		end
+
+		else if(PB2==1)
+		begin
+			set_floor= 2;		
+		end
+
+		else if(PB3==1)
+		begin
+			set_floor= 3;		
+		end
+
+		//REED SWITCHES
+		if(S1==0)
+		begin
+			cf=1;
+			floor_bcd_output=7'b1001111; 
+		end
+
+		else if(S2==0)
+		begin
+			cf=2;
+			floor_bcd_output=7'b0010010; 
+		end
+
+		else if(S3==0)
+		begin
+			cf=3;
+			floor_bcd_output=7'b0000110; 
+		end
+		
+		//FLASHING LED WHEN CHANGING FLOORS
+		if(Up==1||Down==1)
+		begin
+		
+			if(cf==1)
+			begin
+				//001111 (1 ON LCD)
+				floor_bcd_output[5]=count[24];
+				floor_bcd_output[4]=count[24];
+			end
+
+			else if(cf==2)
+			begin
+				//b0010010 (2 ON LCD)
+				floor_bcd_output[0]=count[24];
+				floor_bcd_output[2]=count[24];
+				floor_bcd_output[3]=count[24];
+				floor_bcd_output[5]=count[24];
+				floor_bcd_output[6]=count[24];	
+			end
+
+			else if(cf==3)
+			begin
+				//b0000110 (3 ON LCD)
+				floor_bcd_output[0]=count[24];
+				floor_bcd_output[3]=count[24];
+				floor_bcd_output[4]=count[24];
+				floor_bcd_output[5]=count[24];
+				floor_bcd_output[6]=count[24];
+			end
+		end
+		
+		//ELEVATOR CONTROL CONDITIONS
+		//ELEVATOR DOWN
+		if(set_floor<cf)
+		begin
+			Up=0;
+			Down=1;
+		end
+
+		//ELEVATOR UP
+		else if(set_floor>cf)
+		begin
+			Down=0;
+			Up=1;
+		end
+
+		//ELEVATOR STOP
+		else if(set_floor==cf)
+		begin
+			Up=0;
+			Down=0;
+		end
+		//if(buzz_check>=0 && buzz_check<=10)
+		//begin
+		//Buzzer=1;
+		//buzz_check=buzz_check+1;
+		//end==================
+		
+	end
+	
+	//BCD OUTPUT PIN ASSIGNMENT
+	assign a = floor_bcd_output[6];
+	assign b = floor_bcd_output[5];
+	assign c = floor_bcd_output[4];
+	assign d = floor_bcd_output[3];
+	assign e = floor_bcd_output[2];
+	assign f = floor_bcd_output[1];
+	assign g = floor_bcd_output[0];
+	
+endmodule
+
